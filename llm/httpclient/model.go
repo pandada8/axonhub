@@ -102,9 +102,10 @@ type Response struct {
 }
 
 type StreamEvent struct {
-	LastEventID string `json:"last_event_id,omitempty"`
-	Type        string `json:"type"`
-	Data        []byte `json:"data"`
+	LastEventID  string `json:"last_event_id,omitempty"`
+	Type         string `json:"type"`
+	Data         []byte `json:"data"`
+	ReceivedAtMs int64  `json:"-"`
 }
 
 // StreamDecoder defines the interface for decoding streaming responses.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
@@ -65,6 +66,9 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
+		if event.ReceivedAtMs == 0 {
+			event.ReceivedAtMs = time.Now().UnixMilli()
+		}
 		ts.responseChunks = append(ts.responseChunks, event)
 		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true

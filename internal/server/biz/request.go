@@ -658,9 +658,10 @@ func (s *RequestService) UpdateRequestExecutionStatusFromError(ctx context.Conte
 }
 
 type jsonStreamEvent struct {
-	LastEventID string          `json:"last_event_id,omitempty"`
-	Type        string          `json:"event"`
-	Data        json.RawMessage `json:"data"`
+	LastEventID  string          `json:"last_event_id,omitempty"`
+	Type         string          `json:"event"`
+	Data         json.RawMessage `json:"data"`
+	ReceivedAtMs int64           `json:"received_at_ms,omitempty"`
 }
 
 // SaveRequestExecutionChunks saves all response chunks to request execution at once.
@@ -696,9 +697,10 @@ func (s *RequestService) SaveRequestExecutionChunks(
 		}
 
 		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
+			LastEventID:  chunk.LastEventID,
+			Type:         chunk.Type,
+			Data:         chunk.Data,
+			ReceivedAtMs: chunk.ReceivedAtMs,
 		})
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
@@ -788,9 +790,10 @@ func (s *RequestService) SaveRequestChunks(
 		}
 
 		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
+			LastEventID:  chunk.LastEventID,
+			Type:         chunk.Type,
+			Data:         chunk.Data,
+			ReceivedAtMs: chunk.ReceivedAtMs,
 		})
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))

@@ -73,6 +73,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
+		if event.ReceivedAtMs == 0 {
+			event.ReceivedAtMs = time.Now().UnixMilli()
+		}
 		ts.responseChunks = append(ts.responseChunks, event)
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is

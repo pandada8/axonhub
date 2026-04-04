@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -37,6 +38,11 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 	project := createTestProject(t, ctx, client)
 	ch := createTestChannel(t, ctx, client)
 	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+	require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+		StoreChunks:       true,
+		StoreRequestBody:  true,
+		StoreResponseBody: true,
+	}))
 
 	// Create mock stream events
 	streamEvents := []*httpclient.StreamEvent{
@@ -129,6 +135,19 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 	dbExec := executions[0]
 	assert.Equal(t, ch.ID, dbExec.ChannelID)
 	assert.Equal(t, dbRequest.ID, dbExec.RequestID)
+	require.Len(t, dbExec.ResponseChunks, len(streamEvents))
+
+	type storedChunk struct {
+		Event        string `json:"event"`
+		ReceivedAtMs int64  `json:"received_at_ms"`
+	}
+
+	for _, rawChunk := range dbExec.ResponseChunks {
+		var chunk storedChunk
+		require.NoError(t, json.Unmarshal(rawChunk, &chunk))
+		assert.NotZero(t, chunk.ReceivedAtMs)
+		assert.Greater(t, chunk.ReceivedAtMs, int64(1_000_000_000_000))
+	}
 }
 
 // TestChatCompletionOrchestrator_Process_StreamingError tests that mid-stream errors
