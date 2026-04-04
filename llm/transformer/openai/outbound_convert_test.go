@@ -550,3 +550,70 @@ func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t 
 	require.Len(t, msg.ToolCalls, 1)
 	require.Nil(t, msg.ToolCalls[0].ExtraContent)
 }
+
+func TestMessageFromLLM_DeveloperRoleMappedToSystem(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    llm.Message
+		expected string
+	}{
+		{
+			name: "developer role is mapped to system",
+			input: llm.Message{
+				Role: "developer",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("You are a helpful assistant."),
+				},
+			},
+			expected: "system",
+		},
+		{
+			name: "system role remains system",
+			input: llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("System instruction."),
+				},
+			},
+			expected: "system",
+		},
+		{
+			name: "user role remains user",
+			input: llm.Message{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello!"),
+				},
+			},
+			expected: "user",
+		},
+		{
+			name: "assistant role remains assistant",
+			input: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hi there!"),
+				},
+			},
+			expected: "assistant",
+		},
+		{
+			name: "tool role remains tool",
+			input: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_123"),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Tool result."),
+				},
+			},
+			expected: "tool",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MessageFromLLM(tt.input)
+			require.Equal(t, tt.expected, result.Role)
+		})
+	}
+}

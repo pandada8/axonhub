@@ -113,9 +113,15 @@ func MessageFromLLM(m llm.Message) Message {
 		reasoning = reasoningContent
 	}
 
+	// Map developer role to system for providers that don't support developer as a distinct role
+	role := m.Role
+	if role == "developer" {
+		role = "system"
+	}
+
 	// Build the Message with both fields determined
 	msg := Message{
-		Role:             m.Role,
+		Role:             role,
 		Name:             m.Name,
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
