@@ -40,66 +40,33 @@ func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostI
 		return item, decimal.Zero
 	case objects.PricingModeTiered:
 		if pricing.UsageTiered != nil {
-			var (
-				total    decimal.Decimal
-				prevUpTo int64
-			)
+			// Volume tiered pricing: find the tier that the quantity falls into
+			// and apply that tier's price to the entire quantity.
+			// Tiers are sorted by UpTo, with the last tier having nil UpTo (unlimited).
+			var selectedPrice decimal.Decimal
 
 			for _, tier := range pricing.UsageTiered.Tiers {
-				var tierUnits int64
+				selectedPrice = tier.PricePerUnit
 
-				if tier.UpTo != nil {
-					if quantity <= *tier.UpTo {
-						tierUnits = max(quantity-prevUpTo, 0)
-					} else {
-						tierUnits = max(*tier.UpTo-prevUpTo, 0)
-					}
-				} else {
-					tierUnits = max(quantity-prevUpTo, 0)
-				}
-
-				if tierUnits <= 0 {
-					if tier.UpTo != nil && quantity <= *tier.UpTo {
-						// no more units beyond current quantity
-						break
-					}
-
-					prevUpTo = getUpToOrZero(tier.UpTo)
-
+				if tier.UpTo != nil && quantity > *tier.UpTo {
+					// Quantity exceeds this tier, continue to next tier
 					continue
 				}
 
-				sub := tier.PricePerUnit.Mul(unitsInMillionTokens(tierUnits))
-				total = total.Add(sub)
-				item.TierBreakdown = append(item.TierBreakdown, objects.TierCost{
-					UpTo:     tier.UpTo,
-					Units:    tierUnits,
-					Subtotal: sub,
-				})
-				prevUpTo = getUpToOrZero(tier.UpTo)
-
-				if tier.UpTo != nil && quantity <= *tier.UpTo {
-					break
-				}
+				// Quantity falls within this tier (or this is the last unlimited tier)
+				break
 			}
 
-			item.Subtotal = total
+			sub := selectedPrice.Mul(unitsInMillionTokens(quantity))
+			item.Subtotal = sub
 
-			return item, total
+			return item, sub
 		}
 
 		return item, decimal.Zero
 	default:
 		return item, decimal.Zero
 	}
-}
-
-func getUpToOrZero(v *int64) int64 {
-	if v == nil {
-		return 0
-	}
-
-	return *v
 }
 
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.

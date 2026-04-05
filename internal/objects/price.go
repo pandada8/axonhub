@@ -16,9 +16,10 @@ const (
 	// e.g. $0.01 per token, if the usage is 1,500 then the fee is $0.01 x 1,500 = $15.00.
 	PricingModeUsagePerUnit PricingMode = "usage_per_unit"
 
-	// PricingModeTiered means the request is charged a fee based on the token usage tiers.
-	// e.g. a tier price is [1,000, 2,000, 3,000] for [$0.01, $0.02, $0.03], if the usage is 1,500 then the fee is
-	// $0.01 x 1000 + $0.02 x (1500-1000) = $20.00.
+	// PricingModeTiered means the request is charged based on the tier that the total usage falls into.
+	// e.g. tiers: [0-1000, 1000-2000, 2000+] with prices [$0.01, $0.02, $0.03] per million tokens.
+	// If the usage is 1500 tokens, the entire 1500 tokens are charged at $0.02/M (the tier it falls into).
+	// This is "volume tiered" pricing, not "graduated tiered" where each tier is priced separately.
 	PricingModeTiered PricingMode = "usage_tiered"
 )
 

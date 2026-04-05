@@ -186,11 +186,136 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ul)
 
-	// expected total: (1000/1e6)*0.01 + (500/1e6)*0.02 = 0.00002
+	// Volume tiered pricing: 1500 tokens falls into the second tier (1000+),
+	// so entire 1500 tokens are charged at $0.02/M
+	// expected total: (1500/1e6)*0.02 = 0.00003
 	require.NotNil(t, ul.TotalCost)
-	require.InDelta(t, 0.00002, *ul.TotalCost, 1e-12)
+	require.InDelta(t, 0.00003, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 1)
-	require.Len(t, ul.CostItems[0].TierBreakdown, 2)
+	// No tier breakdown for volume tiered pricing (all tokens use same price)
+	require.Len(t, ul.CostItems[0].TierBreakdown, 0)
+}
+
+func TestUsageCost_TieredPrompt_MultipleTiers(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("c-tiered-multi").
+		SetSupportedModels([]string{"m-tiered"}).
+		SetDefaultTestModel("m-tiered").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Three tiers: 0-128K, 128K-256K, 256K+
+	// Simulating Qwen-style context length tiered pricing
+	_, err = client.ChannelModelPrice.Create().
+		SetChannelID(ch.ID).
+		SetModelID("m-tiered").
+		SetPrice(objects.ModelPrice{
+			Items: []objects.ModelPriceItem{
+				{
+					ItemCode: objects.PriceItemCodeUsage,
+					Pricing: objects.Pricing{
+						Mode: objects.PricingModeTiered,
+						UsageTiered: &objects.TieredPricing{
+							Tiers: []objects.PriceTier{
+								{UpTo: lo.ToPtr(int64(128_000)), PricePerUnit: decimal.NewFromFloat(0.01)},
+								{UpTo: lo.ToPtr(int64(256_000)), PricePerUnit: decimal.NewFromFloat(0.02)},
+								{UpTo: nil, PricePerUnit: decimal.NewFromFloat(0.03)},
+							},
+						},
+					},
+				},
+			},
+		}).
+		SetReferenceID("ref-tiered").
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.preloadModelPrices(ctx, built)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	tests := []struct {
+		name         string
+		promptTokens int64
+		expectedCost float64
+		expectedTier string
+	}{
+		{
+			name:         "first tier - 64K tokens",
+			promptTokens: 64_000,
+			// 64K tokens in first tier (0-128K): 64000/1e6 * 0.01 = 0.00064
+			expectedCost: 0.00064,
+			expectedTier: "first",
+		},
+		{
+			name:         "first tier boundary - 128K tokens",
+			promptTokens: 128_000,
+			// 128K tokens exactly at first tier boundary: 128000/1e6 * 0.01 = 0.00128
+			expectedCost: 0.00128,
+			expectedTier: "first",
+		},
+		{
+			name:         "second tier - 200K tokens",
+			promptTokens: 200_000,
+			// 200K tokens in second tier (128K-256K): 200000/1e6 * 0.02 = 0.004
+			expectedCost: 0.004,
+			expectedTier: "second",
+		},
+		{
+			name:         "second tier boundary - 256K tokens",
+			promptTokens: 256_000,
+			// 256K tokens exactly at second tier boundary: 256000/1e6 * 0.02 = 0.00512
+			expectedCost: 0.00512,
+			expectedTier: "second",
+		},
+		{
+			name:         "third tier - 500K tokens",
+			promptTokens: 500_000,
+			// 500K tokens in third tier (256K+): 500000/1e6 * 0.03 = 0.015
+			expectedCost: 0.015,
+			expectedTier: "third",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			usage := &llm.Usage{
+				PromptTokens:     tt.promptTokens,
+				CompletionTokens: 0,
+				TotalTokens:      tt.promptTokens,
+			}
+
+			ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+				RequestID:     1,
+				ProjectID:     1,
+				ChannelID:     ch.ID,
+				ActualModelID: "m-tiered",
+				Usage:         usage,
+				Source:        "api",
+				Format:        "openai/chat_completions",
+				APIKeyID:      nil,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, ul)
+			require.NotNil(t, ul.TotalCost)
+			require.InDelta(t, tt.expectedCost, *ul.TotalCost, 1e-12)
+		})
+	}
 }
 
 func TestUsageCost_NoPriceConfigured(t *testing.T) {
