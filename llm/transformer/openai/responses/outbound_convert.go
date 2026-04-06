@@ -332,6 +332,21 @@ func convertImageGenerationToTool(src llm.Tool) Tool {
 	return tool
 }
 
+func convertWebSearchToTool(src llm.Tool) Tool {
+	tool := Tool{
+		Type: llm.ToolTypeWebSearch,
+	}
+
+	if src.WebSearch != nil {
+		tool.MaxUses = src.WebSearch.MaxUses
+		tool.AllowedDomains = src.WebSearch.AllowedDomains
+		tool.BlockedDomains = src.WebSearch.BlockedDomains
+		tool.UserLocation = src.WebSearch.UserLocation
+	}
+
+	return tool
+}
+
 // convertCustomToTool converts an llm.Tool custom tool to Responses API Tool format.
 func convertCustomToTool(src llm.Tool) Tool {
 	tool := Tool{

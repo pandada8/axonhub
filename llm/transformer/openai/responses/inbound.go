@@ -733,6 +733,18 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				},
 			})
 
+		case llm.ToolTypeWebSearch:
+			result = append(result, llm.Tool{
+				Type: llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{
+					MaxUses:        tool.MaxUses,
+					Strict:         tool.Strict,
+					AllowedDomains: tool.AllowedDomains,
+					BlockedDomains: tool.BlockedDomains,
+					UserLocation:   tool.UserLocation,
+				},
+			})
+
 		case "custom":
 			customTool := &llm.ResponseCustomTool{
 				Name:        tool.Name,

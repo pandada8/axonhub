@@ -317,6 +317,54 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with web search tool",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search the web"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							MaxUses:        lo.ToPtr(int64(3)),
+							AllowedDomains: []string{"openai.com"},
+							BlockedDomains: []string{"example.com"},
+							UserLocation: llm.WebSearchToolUserLocation{
+								City:     "Shanghai",
+								Country:  "CN",
+								Region:   "Shanghai",
+								Timezone: "Asia/Shanghai",
+								Type:     "approximate",
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, llm.ToolTypeWebSearch, req.Tools[0].Type)
+				require.NotNil(t, req.Tools[0].MaxUses)
+				require.Equal(t, int64(3), *req.Tools[0].MaxUses)
+				require.Equal(t, []string{"openai.com"}, req.Tools[0].AllowedDomains)
+				require.Equal(t, []string{"example.com"}, req.Tools[0].BlockedDomains)
+				require.Equal(t, "Shanghai", req.Tools[0].UserLocation.City)
+				require.Equal(t, "CN", req.Tools[0].UserLocation.Country)
+				require.Equal(t, "Asia/Shanghai", req.Tools[0].UserLocation.Timezone)
+				require.Equal(t, "approximate", req.Tools[0].UserLocation.Type)
+			},
+		},
+		{
 			name: "request with unsupported tool type is skipped",
 			chatReq: &llm.Request{
 				Model: "gpt-4o",
