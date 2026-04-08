@@ -734,14 +734,21 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			})
 
 		case llm.ToolTypeWebSearch:
+			allowedDomains := tool.AllowedDomains
+			if len(allowedDomains) == 0 && tool.Filters != nil {
+				allowedDomains = tool.Filters.AllowedDomains
+			}
+
 			result = append(result, llm.Tool{
 				Type: llm.ToolTypeWebSearch,
 				WebSearch: &llm.WebSearch{
-					MaxUses:        tool.MaxUses,
-					Strict:         tool.Strict,
-					AllowedDomains: tool.AllowedDomains,
-					BlockedDomains: tool.BlockedDomains,
-					UserLocation:   tool.UserLocation,
+					MaxUses:           tool.MaxUses,
+					Strict:            tool.Strict,
+					AllowedDomains:    allowedDomains,
+					BlockedDomains:    tool.BlockedDomains,
+					UserLocation:      tool.UserLocation,
+					ExternalWebAccess: tool.ExternalWebAccess,
+					SearchContextSize: tool.SearchContextSize,
 				},
 			})
 

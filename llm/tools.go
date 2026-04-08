@@ -218,11 +218,13 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 }
 
 type WebSearch struct {
-	MaxUses        *int64                    `json:"max_uses,omitempty"`
-	Strict         *bool                     `json:"strict,omitempty"`
-	AllowedDomains []string                  `json:"allowed_domains,omitzero"`
-	BlockedDomains []string                  `json:"blocked_domains,omitzero"`
-	UserLocation   WebSearchToolUserLocation `json:"user_location,omitzero"`
+	MaxUses           *int64                    `json:"max_uses,omitempty"`
+	Strict            *bool                     `json:"strict,omitempty"`
+	AllowedDomains    []string                  `json:"allowed_domains,omitzero"`
+	BlockedDomains    []string                  `json:"blocked_domains,omitzero"`
+	UserLocation      WebSearchToolUserLocation `json:"user_location,omitzero"`
+	ExternalWebAccess *bool                     `json:"external_web_access,omitempty"`
+	SearchContextSize string                    `json:"search_context_size,omitempty"`
 }
 
 type WebSearchToolUserLocation struct {

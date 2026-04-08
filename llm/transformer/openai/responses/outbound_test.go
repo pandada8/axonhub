@@ -332,9 +332,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					{
 						Type: llm.ToolTypeWebSearch,
 						WebSearch: &llm.WebSearch{
-							MaxUses:        lo.ToPtr(int64(3)),
-							AllowedDomains: []string{"openai.com"},
-							BlockedDomains: []string{"example.com"},
+							MaxUses:           lo.ToPtr(int64(3)),
+							AllowedDomains:    []string{"openai.com"},
+							BlockedDomains:    []string{"example.com"},
+							ExternalWebAccess: lo.ToPtr(true),
+							SearchContextSize: "high",
 							UserLocation: llm.WebSearchToolUserLocation{
 								City:     "Shanghai",
 								Country:  "CN",
@@ -356,6 +358,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, llm.ToolTypeWebSearch, req.Tools[0].Type)
 				require.NotNil(t, req.Tools[0].MaxUses)
 				require.Equal(t, int64(3), *req.Tools[0].MaxUses)
+				require.NotNil(t, req.Tools[0].ExternalWebAccess)
+				require.True(t, *req.Tools[0].ExternalWebAccess)
+				require.Equal(t, "high", req.Tools[0].SearchContextSize)
+				require.NotNil(t, req.Tools[0].Filters)
+				require.Equal(t, []string{"openai.com"}, req.Tools[0].Filters.AllowedDomains)
 				require.Equal(t, []string{"openai.com"}, req.Tools[0].AllowedDomains)
 				require.Equal(t, []string{"example.com"}, req.Tools[0].BlockedDomains)
 				require.Equal(t, "Shanghai", req.Tools[0].UserLocation.City)

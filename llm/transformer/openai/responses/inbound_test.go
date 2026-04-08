@@ -192,7 +192,11 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 						{
 							"type": "web_search",
 							"max_uses": 3,
-							"allowed_domains": ["openai.com"],
+							"external_web_access": true,
+							"search_context_size": "high",
+							"filters": {
+								"allowed_domains": ["openai.com"]
+							},
 							"blocked_domains": ["example.com"],
 							"user_location": {
 								"city": "Shanghai",
@@ -212,12 +216,36 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.NotNil(t, result.Tools[0].WebSearch)
 				require.NotNil(t, result.Tools[0].WebSearch.MaxUses)
 				require.Equal(t, int64(3), *result.Tools[0].WebSearch.MaxUses)
+				require.NotNil(t, result.Tools[0].WebSearch.ExternalWebAccess)
+				require.True(t, *result.Tools[0].WebSearch.ExternalWebAccess)
+				require.Equal(t, "high", result.Tools[0].WebSearch.SearchContextSize)
 				require.Equal(t, []string{"openai.com"}, result.Tools[0].WebSearch.AllowedDomains)
 				require.Equal(t, []string{"example.com"}, result.Tools[0].WebSearch.BlockedDomains)
 				require.Equal(t, "Shanghai", result.Tools[0].WebSearch.UserLocation.City)
 				require.Equal(t, "CN", result.Tools[0].WebSearch.UserLocation.Country)
 				require.Equal(t, "Asia/Shanghai", result.Tools[0].WebSearch.UserLocation.Timezone)
 				require.Equal(t, "approximate", result.Tools[0].WebSearch.UserLocation.Type)
+			},
+		},
+		{
+			name: "request with legacy web search allowed_domains",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": "Search the web",
+					"tools": [
+						{
+							"type": "web_search",
+							"allowed_domains": ["legacy.example"]
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Len(t, result.Tools, 1)
+				require.NotNil(t, result.Tools[0].WebSearch)
+				require.Equal(t, []string{"legacy.example"}, result.Tools[0].WebSearch.AllowedDomains)
 			},
 		},
 		{

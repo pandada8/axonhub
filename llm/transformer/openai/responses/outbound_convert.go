@@ -342,6 +342,13 @@ func convertWebSearchToTool(src llm.Tool) Tool {
 		tool.AllowedDomains = src.WebSearch.AllowedDomains
 		tool.BlockedDomains = src.WebSearch.BlockedDomains
 		tool.UserLocation = src.WebSearch.UserLocation
+		tool.ExternalWebAccess = src.WebSearch.ExternalWebAccess
+		tool.SearchContextSize = src.WebSearch.SearchContextSize
+		if len(src.WebSearch.AllowedDomains) > 0 {
+			tool.Filters = &WebSearchFilters{
+				AllowedDomains: src.WebSearch.AllowedDomains,
+			}
+		}
 	}
 
 	return tool

@@ -11,6 +11,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+type WebSearchFilters struct {
+	AllowedDomains []string `json:"allowed_domains,omitempty"`
+}
+
 // ImageGeneration is a permissive structure to carry image generation tool
 // parameters. It mirrors the OpenRouter/OpenAI Responses API fields we care
 // about, but is intentionally loose to allow forward-compatibility.
@@ -55,10 +59,13 @@ type Tool struct {
 	Size string `json:"size,omitempty"`
 
 	// These fields are for WebSearch.
-	MaxUses        *int64                        `json:"max_uses,omitempty"`
-	AllowedDomains []string                      `json:"allowed_domains,omitempty"`
-	BlockedDomains []string                      `json:"blocked_domains,omitempty"`
-	UserLocation   llm.WebSearchToolUserLocation `json:"user_location,omitzero"`
+	MaxUses           *int64                        `json:"max_uses,omitempty"`
+	AllowedDomains    []string                      `json:"allowed_domains,omitempty"`
+	BlockedDomains    []string                      `json:"blocked_domains,omitempty"`
+	UserLocation      llm.WebSearchToolUserLocation `json:"user_location,omitzero"`
+	ExternalWebAccess *bool                         `json:"external_web_access,omitempty"`
+	SearchContextSize string                        `json:"search_context_size,omitempty"`
+	Filters           *WebSearchFilters             `json:"filters,omitempty"`
 }
 
 // CustomToolFormat represents the format definition for a custom tool.
